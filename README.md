@@ -44,14 +44,25 @@ pip install -r requirements.txt
 
 ## 🖥️ Sample Output
 
-Paste a sample of your app's CLI or Streamlit output here so a reader can see what a generated plan looks like:
+Below is the terminal output from running `python main.py` — an owner with two
+pets and six care tasks, scheduled into a 90-minute daily budget. This is
+evidence that the logic layer runs correctly.
 
 ```
-# e.g.:
-# Daily plan for Biscuit (Golden Retriever):
-#   08:00 — Morning walk (30 min) [priority: high]
-#   09:00 — Feeding (10 min) [priority: high]
-#   ...
+========================================
+  Today's Schedule for Sam
+========================================
+  1. Feeding for Mittens (5 min) [priority: high]
+  2. Feeding for Biscuit (10 min) [priority: high]
+  3. Morning walk for Biscuit (30 min) [priority: high]
+  4. Litter cleanup for Mittens (10 min) [priority: medium]
+  5. Play session for Mittens (15 min) [priority: low]
+  6. Enrichment puzzle for Biscuit (20 min) [priority: low]
+----------------------------------------
+Strategy: priority (higher priority first, then shorter tasks).
+Time budget: 90 min.
+All eligible tasks fit within the available time.
+========================================
 ```
 
 ## 🧪 Testing PawPal+
