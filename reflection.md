@@ -38,8 +38,9 @@ Yes, my design changed a little after the AI reviewed my skeleton.
 
 **b. Tradeoffs**
 
-- Describe one tradeoff your scheduler makes.
-- Why is that tradeoff reasonable for this scenario?
+One tradeoff my scheduler makes is in conflict detection. The `Scheduler.detect_conflicts()` method only flags tasks that share the **exact same start time** (for example, two tasks both at "08:00"). It does **not** look at how long each task lasts, so it won't catch an *overlap* — like a 30-minute walk at 08:00 running into a feeding at 08:15.
+
+This is reasonable for a pet-care planner because most owners think in simple time slots, and exact-match checking is fast, easy to read, and rarely wrong for short daily tasks. Checking true overlaps would mean parsing every time into minutes and comparing ranges, which adds complexity for a small real-world gain. If the app grew to handle longer, tightly packed schedules, upgrading to real overlap detection would be the natural next step.
 
 ---
 

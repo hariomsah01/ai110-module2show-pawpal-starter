@@ -11,6 +11,7 @@ script (see the __main__ demo at the bottom) before wiring up Streamlit.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import date, timedelta
 
 # Higher number = more important. Used to sort tasks correctly instead of
 # comparing the priority strings directly (which would sort alphabetically).
@@ -29,6 +30,7 @@ class Task:
     preferred_time: str | None = None  # e.g., "08:00" or None
     pet_name: str | None = None  # which pet this task is for (shown in the plan)
     completed: bool = False  # completion status
+    due_date: date | None = None  # when this occurrence is due (for recurring tasks)
 
     def priority_rank(self) -> int:
         """Return the numeric rank for this task's priority (unknown -> 0)."""
@@ -52,6 +54,33 @@ class Task:
     def mark_complete(self) -> None:
         """Mark this task as done."""
         self.completed = True
+
+    def next_occurrence(self) -> "Task | None":
+        """Build the next occurrence of a recurring task, or None if one-time.
+
+        Daily -> due one day later; weekly -> one week later. Uses timedelta so
+        month/year rollovers are handled correctly. The new task is a fresh,
+        not-yet-completed copy.
+        """
+        if self.recurrence == "daily":
+            delta = timedelta(days=1)
+        elif self.recurrence == "weekly":
+            delta = timedelta(weeks=1)
+        else:  # one-time tasks don't repeat
+            return None
+
+        base = self.due_date or date.today()
+        return Task(
+            name=self.name,
+            duration=self.duration,
+            priority=self.priority,
+            category=self.category,
+            recurrence=self.recurrence,
+            preferred_time=self.preferred_time,
+            pet_name=self.pet_name,
+            completed=False,
+            due_date=base + delta,
+        )
 
     def describe(self) -> str:
         """Return a readable one-line summary of the task."""
@@ -82,6 +111,18 @@ class Pet:
     def list_tasks(self) -> list[Task]:
         """Return this pet's tasks."""
         return list(self.tasks)
+
+    def mark_task_complete(self, task: Task) -> Task | None:
+        """Complete a task and auto-add its next occurrence if it recurs.
+
+        Returns the newly created next-occurrence task, or None for one-time
+        tasks. This is what links completion to the recurring-task logic.
+        """
+        task.mark_complete()
+        upcoming = task.next_occurrence()
+        if upcoming is not None:
+            self.tasks.append(upcoming)
+        return upcoming
 
 
 @dataclass
@@ -147,6 +188,44 @@ class Scheduler:
             self.tasks,
             key=lambda t: (-t.priority_rank(), t.duration),
         )
+
+    def sort_by_time(self) -> list[Task]:
+        """Order tasks by their preferred_time ("HH:MM"); untimed tasks last.
+
+        A lambda key returns the time string, which sorts correctly because
+        zero-padded "HH:MM" strings compare the same as the actual clock times
+        ("08:00" < "09:30"). Untimed tasks get "99:99" so they sink to the end.
+        """
+        return sorted(self.tasks, key=lambda t: t.preferred_time or "99:99")
+
+    def filter_by_status(self, completed: bool = False) -> list[Task]:
+        """Return tasks matching a completion status (default: not completed)."""
+        return [t for t in self.tasks if t.completed == completed]
+
+    def filter_by_pet(self, pet_name: str) -> list[Task]:
+        """Return only the tasks belonging to the given pet."""
+        return [t for t in self.tasks if t.pet_name == pet_name]
+
+    def detect_conflicts(self) -> list[str]:
+        """Flag tasks that share the same preferred_time (lightweight check).
+
+        Returns a list of human-readable warning strings instead of raising, so
+        the caller can display them without the program crashing. Only exact
+        time matches are checked (see reflection.md, section 2b).
+        """
+        by_time: dict[str, list[Task]] = {}
+        for task in self.tasks:
+            if task.preferred_time:
+                by_time.setdefault(task.preferred_time, []).append(task)
+
+        warnings: list[str] = []
+        for time_str, group in sorted(by_time.items()):
+            if len(group) > 1:
+                names = ", ".join(
+                    f"{t.name} ({t.pet_name})" if t.pet_name else t.name for t in group
+                )
+                warnings.append(f"Conflict at {time_str}: {names}")
+        return warnings
 
     def filter_tasks(self, day: str | None = None) -> list[Task]:
         """Keep only tasks that apply today and aren't already completed."""
