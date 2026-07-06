@@ -67,19 +67,36 @@ All eligible tasks fit within the available time.
 
 ## 🧪 Testing PawPal+
 
-```bash
-# Run the full test suite:
-pytest
+Run the automated test suite from the project root:
 
-# Run with coverage:
-pytest --cov
+```bash
+python -m pytest
 ```
+
+**What the tests cover** (`tests/test_pawpal.py`, 10 tests):
+
+- **Task state** — `mark_complete()` flips a task's status.
+- **Data wiring** — adding a task grows the pet's task list.
+- **Sorting** — `sort_by_time()` returns tasks in chronological order, with untimed tasks placed last.
+- **Recurrence** — completing a *daily* task creates a new task due the next day (via `timedelta`), while a *one-time* task does not regenerate.
+- **Conflict detection** — duplicate start times are flagged, and distinct times raise no false alarms.
+- **Edge cases** — a pet with no tasks produces a safe, empty plan; tasks that exceed the time budget are skipped rather than scheduled.
 
 Sample test output:
 
 ```
-# Paste your pytest output here
+============================= test session starts =============================
+platform win32 -- Python 3.14.5, pytest-9.0.3, pluggy-1.6.0
+collected 10 items
+
+tests\test_pawpal.py ..........                                          [100%]
+
+============================= 10 passed in 0.08s ==============================
 ```
+
+**Confidence Level: ★★★★☆ (4/5)**
+
+All core behaviors — sorting, recurrence, conflict detection, filtering, and the time-budget constraint — are covered by passing tests, including several edge cases. It's 4 rather than 5 stars because conflict detection only checks exact time matches (not overlapping durations; see reflection 2b), and weekly recurrence on specific weekdays isn't yet tested.
 
 ## 📐 Smarter Scheduling
 
