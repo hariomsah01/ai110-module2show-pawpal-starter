@@ -22,6 +22,18 @@ Your final app should:
 - Display the plan clearly (and ideally explain the reasoning)
 - Include tests for the most important scheduling behaviors
 
+## ✨ Features
+
+- **Owner & pet profiles** — track an owner's daily time budget and multiple pets, each with their own care tasks.
+- **Sorting by time** — tasks are ordered chronologically by their `HH:MM` start time so the day reads as a timeline (`Scheduler.sort_by_time()`).
+- **Priority-aware planning** — the planner packs the most important tasks first, then shorter ones, into the available time (`Scheduler.generate_plan()`).
+- **Time-budget filtering** — tasks that don't fit the available minutes are skipped and reported, not silently dropped (`Scheduler.resolve_conflicts()`).
+- **Filtering** — view tasks by pet or by completion status (`Scheduler.filter_by_pet()`, `Scheduler.filter_by_status()`).
+- **Conflict warnings** — flags two tasks scheduled at the same start time and returns a friendly warning instead of crashing (`Scheduler.detect_conflicts()`).
+- **Daily / weekly recurrence** — completing a recurring task automatically creates its next occurrence with a due date advanced via `timedelta` (`Pet.mark_task_complete()` + `Task.next_occurrence()`).
+- **Explainable plans** — every generated plan comes with a plain-language explanation of the strategy and any skipped tasks (`Scheduler.explain()`).
+- **Interactive UI + tested logic** — a Streamlit front end backed by a decoupled logic layer with a passing `pytest` suite.
+
 ## Getting started
 
 ### Setup
@@ -45,24 +57,31 @@ pip install -r requirements.txt
 ## 🖥️ Sample Output
 
 Below is the terminal output from running `python main.py` — an owner with two
-pets and six care tasks, scheduled into a 90-minute daily budget. This is
-evidence that the logic layer runs correctly.
+pets whose tasks are added out of order, then sorted, checked for conflicts,
+filtered, and regenerated on completion. This is evidence that the logic layer
+runs correctly.
 
 ```
-========================================
-  Today's Schedule for Sam
-========================================
-  1. Feeding for Mittens (5 min) [priority: high]
-  2. Feeding for Biscuit (10 min) [priority: high]
-  3. Morning walk for Biscuit (30 min) [priority: high]
-  4. Litter cleanup for Mittens (10 min) [priority: medium]
-  5. Play session for Mittens (15 min) [priority: low]
-  6. Enrichment puzzle for Biscuit (20 min) [priority: low]
-----------------------------------------
-Strategy: priority (higher priority first, then shorter tasks).
-Time budget: 90 min.
-All eligible tasks fit within the available time.
-========================================
+================================================
+  Today's Schedule (sorted by time)
+================================================
+  08:00  Morning walk for Biscuit (30 min) [priority: high]
+  08:00  Feeding for Mittens (5 min) [priority: high]
+  14:00  Enrichment puzzle for Biscuit (20 min) [priority: low]
+  18:00  Evening walk for Biscuit (30 min) [priority: high]
+  20:00  Play session for Mittens (15 min) [priority: low]
+
+------------------------------------------------
+  Conflict check
+------------------------------------------------
+  Conflict at 08:00: Morning walk (Biscuit), Feeding (Mittens)
+
+------------------------------------------------
+  Recurring: complete Biscuit's morning walk
+------------------------------------------------
+  Completed: Morning walk (completed=True)
+  Auto-created next occurrence due: 2026-07-06
+================================================
 ```
 
 ## 🧪 Testing PawPal+
@@ -115,12 +134,72 @@ names the method in `pawpal_system.py` that implements it.
 
 ## 📸 Demo Walkthrough
 
-Describe your app in numbered steps so a reader can follow along without watching a video:
+Launch the interactive app with:
 
-1. <!-- Describe this step -->
-2. <!-- Describe this step -->
-3. <!-- Describe this step -->
-4. <!-- Describe this step -->
-5. <!-- Add more steps as needed -->
+```bash
+streamlit run app.py
+```
+
+### Main UI features
+
+- **👤 Owner** — set the owner's name and the total minutes available for pet care today.
+- **🐶 Add a Pet** — create a pet profile (name, species, breed). An owner can have several pets.
+- **📝 Add a Task** — pick which pet the task is for, then set its title, duration, priority, category, preferred time (`HH:MM`), and how often it repeats.
+- **📋 Current Pets & Tasks** — see each pet's tasks in a table, including time, priority, recurrence, and completion status.
+- **📅 Today's Schedule** — click **Generate schedule** to build and view the day's plan.
+
+### Example workflow
+
+1. Set your available time (e.g., `90` minutes) and add an owner name.
+2. **Add a pet** — e.g., "Biscuit," a Golden Retriever.
+3. **Add tasks** for Biscuit — a `08:00` morning walk (high priority) and a `08:00` feeding, plus a `14:00` enrichment puzzle (low priority).
+4. Add a second pet, "Mittens," and give her a `08:00` feeding too.
+5. Click **Generate schedule** to view today's plan.
+
+### Key Scheduler behaviors shown
+
+- **Sorting** — the plan is displayed as a clean, time-ordered table (earliest task first).
+- **Conflict warnings** — because two tasks are booked at `08:00`, the app shows a yellow warning: *"Conflict at 08:00: Morning walk (Biscuit), Feeding (Mittens)"* — presented at the top of the schedule so it's impossible to miss.
+- **Time-budget filtering** — if the day's tasks exceed the available minutes, the extras are listed under a "Skipped" warning rather than silently dropped.
+- **Explanation** — an expandable "Why this plan?" panel summarizes the strategy and any skipped tasks.
+- **Recurrence** — marking a daily task complete regenerates it for tomorrow (see CLI output below).
+
+### Sample CLI output (`python main.py`)
+
+```
+================================================
+  Today's Schedule (sorted by time)
+================================================
+  08:00  Morning walk for Biscuit (30 min) [priority: high]
+  08:00  Feeding for Mittens (5 min) [priority: high]
+  14:00  Enrichment puzzle for Biscuit (20 min) [priority: low]
+  18:00  Evening walk for Biscuit (30 min) [priority: high]
+  20:00  Play session for Mittens (15 min) [priority: low]
+
+------------------------------------------------
+  Conflict check
+------------------------------------------------
+  Conflict at 08:00: Morning walk (Biscuit), Feeding (Mittens)
+
+------------------------------------------------
+  Filter: only Biscuit's tasks
+------------------------------------------------
+  - Evening walk for Biscuit (30 min) [priority: high]
+  - Morning walk for Biscuit (30 min) [priority: high]
+  - Enrichment puzzle for Biscuit (20 min) [priority: low]
+
+------------------------------------------------
+  Recurring: complete Biscuit's morning walk
+------------------------------------------------
+  Completed: Morning walk (completed=True)
+  Auto-created next occurrence due: 2026-07-06
+
+------------------------------------------------
+  Filter: completed vs. pending
+------------------------------------------------
+  Completed: ['Morning walk']
+  Pending:   ['Evening walk', 'Enrichment puzzle', 'Morning walk', 'Feeding', 'Play session']
+================================================
+```
 
 **Screenshot or video** *(optional)*: <!-- Insert a screenshot or link to a demo video here -->

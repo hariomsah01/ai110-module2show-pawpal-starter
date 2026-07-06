@@ -33,8 +33,13 @@ Yes, my design changed a little after the AI reviewed my skeleton.
 
 **a. Constraints and priorities**
 
-- What constraints does your scheduler consider (for example: time, priority, preferences)?
-- How did you decide which constraints mattered most?
+My scheduler considers three main constraints:
+
+- **Time available** — the owner sets how many minutes they have, and the scheduler only plans tasks that fit within that budget.
+- **Priority** — each task is high, medium, or low, and higher-priority tasks are placed first.
+- **Preferred time** — tasks have an `HH:MM` time so the plan can be shown as a real daily timeline, and same-time tasks are flagged as conflicts.
+
+I decided **time** and **priority** mattered most because the whole point of the app is helping a busy owner fit the *important* care into a limited day. If something has to be dropped, it should be the low-priority task, not the medication. Preferred time matters for ordering and conflicts, but it comes after making sure the essential tasks actually fit.
 
 **b. Tradeoffs**
 
@@ -48,13 +53,19 @@ This is reasonable for a pet-care planner because most owners think in simple ti
 
 **a. How you used AI**
 
-- How did you use AI tools during this project (for example: design brainstorming, debugging, refactoring)?
-- What kinds of prompts or questions were most helpful?
+I used my AI coding assistant across every phase:
+
+- **Design brainstorming** — to list the main objects and turn my ideas into a Mermaid UML diagram.
+- **Skeleton and implementation** — the assistant's automatic editing / agent mode was the most effective feature. It could create files, fill in class stubs, and then flesh out the real logic across `pawpal_system.py`, `main.py`, and `app.py` at once, which saved a lot of typing.
+- **Explaining and reviewing** — the chat was helpful for questions like "how do I sort `HH:MM` strings with a lambda?" and "how do I use `timedelta` for the next day?"
+
+The most helpful prompts were **specific ones** that named a file or a method and asked for one concrete thing — for example, "review my skeleton for missing relationships" or "how should the Scheduler get tasks from the Owner?" Vague prompts gave vague answers.
 
 **b. Judgment and verification**
 
-- Describe one moment where you did not accept an AI suggestion as-is.
-- How did you evaluate or verify what the AI suggested?
+One moment I did not accept a suggestion as-is was the **conflict detection** method. The AI offered a very short, "Pythonic" version using `itertools.groupby`, but it needed the list pre-sorted and was harder to read at a glance. I kept the clearer version that groups tasks into a dictionary by time, because readability mattered more than saving two lines.
+
+I also caught a real bug through verification: the conflict warning first used a ⚠️ emoji, which **crashed in the Windows terminal** (encoding error). I only found this because I actually *ran* `main.py` instead of trusting the code looked fine. I verify AI output by running it — the CLI demo and the `pytest` suite are how I confirm the logic really behaves the way the AI (and I) expected.
 
 ---
 
@@ -62,13 +73,20 @@ This is reasonable for a pet-care planner because most owners think in simple ti
 
 **a. What you tested**
 
-- What behaviors did you test?
-- Why were these tests important?
+I wrote 10 automated tests in `tests/test_pawpal.py` covering:
+
+- **Task state** — `mark_complete()` flips a task to done.
+- **Data wiring** — adding a task grows the pet's task list.
+- **Sorting** — tasks come back in chronological order, and untimed tasks go last.
+- **Recurrence** — completing a daily task creates a next-day task, and a one-time task does *not* regenerate.
+- **Conflict detection** — duplicate times are flagged, and different times raise no false alarms.
+- **Edge cases** — a pet with no tasks doesn't crash, and tasks that exceed the time budget are skipped.
+
+These were important because they are the exact behaviors a user depends on. If sorting, recurrence, or conflict detection quietly broke, the daily plan would be wrong and the owner might miss a walk or a dose of medication.
 
 **b. Confidence**
 
-- How confident are you that your scheduler works correctly?
-- What edge cases would you test next if you had more time?
+I'm fairly confident — about **4 out of 5**. All 10 tests pass, and they cover the core logic plus several edge cases. I'm not at 5 because conflict detection only checks exact time matches (not overlapping durations), and I haven't tested weekly recurrence landing on a specific weekday. If I had more time, I would test: overlapping-duration conflicts, weekly tasks across a month boundary, invalid time strings, and a plan where every task is the same priority.
 
 ---
 
@@ -76,12 +94,12 @@ This is reasonable for a pet-care planner because most owners think in simple ti
 
 **a. What went well**
 
-- What part of this project are you most satisfied with?
+I'm most satisfied with how cleanly the logic layer is separated from the UI. Because `pawpal_system.py` has no Streamlit code in it, I could build and test the whole "brain" from the terminal first, then wire it into `app.py` with confidence. The recurring-task feature (completing a task auto-creating tomorrow's) is the part I think is coolest.
 
 **b. What you would improve**
 
-- If you had another iteration, what would you improve or redesign?
+If I had another iteration, I would upgrade conflict detection to handle **overlapping durations**, not just exact time matches — that's the biggest gap. I'd also let the user **mark tasks complete directly in the Streamlit UI** (right now recurrence is only shown from the CLI), and I'd store real dates so the plan could span multiple days instead of just "today."
 
 **c. Key takeaway**
 
-- What is one important thing you learned about designing systems or working with AI on this project?
+The biggest thing I learned is what it means to be the **lead architect** while working with a powerful AI assistant. The AI could generate a lot of code very fast, but it was my job to make the design decisions, catch what didn't fit, and verify everything actually worked. Using **separate chat sessions for each phase** helped me stay organized — planning, implementing, and testing didn't bleed into each other, so each conversation stayed focused. The AI was fastest at *writing*, but I was responsible for *deciding* — choosing the readable version over the clever one, spotting the missing pet-to-task link, and running the code instead of assuming it was correct. AI is a strong collaborator, but the direction and the judgment have to come from me.

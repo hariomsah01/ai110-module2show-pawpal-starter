@@ -1,0 +1,64 @@
+classDiagram
+    class Task {
+        +str name
+        +int duration
+        +str priority
+        +str category
+        +str recurrence
+        +str preferred_time
+        +str pet_name
+        +bool completed
+        +date due_date
+        +priority_rank() int
+        +is_higher_priority_than(other) bool
+        +matches_day(day) bool
+        +mark_complete() void
+        +next_occurrence() Task
+        +describe() str
+    }
+
+    class Pet {
+        +str name
+        +str species
+        +str breed
+        +int age
+        +list~Task~ tasks
+        +add_task(task) void
+        +remove_task(task) void
+        +list_tasks() list~Task~
+        +mark_task_complete(task) Task
+    }
+
+    class Owner {
+        +str name
+        +int available_minutes
+        +dict preferences
+        +list~Pet~ pets
+        +add_pet(pet) void
+        +set_available_time(minutes) void
+        +update_preferences(prefs) void
+        +get_all_tasks() list~Task~
+    }
+
+    class Scheduler {
+        +list~Task~ tasks
+        +int available_minutes
+        +str strategy
+        +list~Task~ skipped
+        +from_owner(owner) Scheduler$
+        +sort_tasks() list~Task~
+        +sort_by_time() list~Task~
+        +filter_by_status(completed) list~Task~
+        +filter_by_pet(pet_name) list~Task~
+        +filter_tasks(day) list~Task~
+        +detect_conflicts() list~str~
+        +resolve_conflicts(ordered) list~Task~
+        +generate_plan(day) list~Task~
+        +explain() str
+    }
+
+    Owner "1" --> "*" Pet : owns
+    Pet "1" --> "*" Task : has
+    Scheduler ..> Owner : reads via from_owner()
+    Scheduler ..> Task : schedules
+    Task ..> Task : spawns next_occurrence()

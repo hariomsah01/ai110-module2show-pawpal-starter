@@ -79,9 +79,16 @@ else:
         with c3:
             priority = st.selectbox("Priority", ["low", "medium", "high"], index=2)
 
-        category = st.selectbox(
-            "Category", ["walk", "feeding", "meds", "enrichment", "grooming", "general"]
-        )
+        c4, c5 = st.columns(2)
+        with c4:
+            category = st.selectbox(
+                "Category", ["walk", "feeding", "meds", "enrichment", "grooming", "general"]
+            )
+        with c5:
+            preferred_time = st.text_input(
+                "Preferred time (HH:MM)", value="08:00", help="24-hour, e.g. 08:00 or 18:30"
+            )
+        recurrence = st.selectbox("Repeats", ["daily", "weekly", "one-time"])
         submitted_task = st.form_submit_button("Add task")
 
         if submitted_task:
@@ -93,6 +100,8 @@ else:
                     duration=int(duration),
                     priority=priority,
                     category=category,
+                    preferred_time=preferred_time.strip() or None,
+                    recurrence=recurrence,
                 )
             )
             st.success(f"Added '{task_title}' for {chosen_pet_name}.")
@@ -116,10 +125,13 @@ else:
                 st.table(
                     [
                         {
+                            "Time": t.preferred_time or "—",
                             "Task": t.name,
                             "Duration (min)": t.duration,
                             "Priority": t.priority,
                             "Category": t.category,
+                            "Repeats": t.recurrence,
+                            "Done": "✓" if t.completed else "",
                         }
                         for t in tasks
                     ]
@@ -136,13 +148,38 @@ st.divider()
 st.subheader("📅 Today's Schedule")
 if st.button("Generate schedule", type="primary"):
     scheduler = Scheduler.from_owner(owner)
+
+    # Conflict warnings first, so the owner sees clashes before the plan.
+    conflicts = scheduler.detect_conflicts()
+    for warning in conflicts:
+        st.warning(f"⚠️ {warning}")
+
     plan = scheduler.generate_plan()
 
     if not plan:
-        st.warning("No tasks could be scheduled. Add tasks or increase available time.")
+        st.info("No tasks could be scheduled. Add tasks or increase available time.")
     else:
-        for i, task in enumerate(plan, start=1):
-            st.write(f"**{i}. {task.describe()}**")
+        st.success(f"Planned {len(plan)} task(s) within {owner.available_minutes} minutes.")
+
+        # Present the plan as a professional, time-ordered timeline table.
+        timeline = Scheduler(tasks=plan).sort_by_time()
+        st.table(
+            [
+                {
+                    "Time": t.preferred_time or "—",
+                    "Task": t.name,
+                    "Pet": t.pet_name or "—",
+                    "Duration (min)": t.duration,
+                    "Priority": t.priority,
+                }
+                for t in timeline
+            ]
+        )
+
+    # Show anything that didn't fit in the time budget.
+    if scheduler.skipped:
+        skipped_names = ", ".join(t.name for t in scheduler.skipped)
+        st.warning(f"Skipped (not enough time): {skipped_names}")
 
     with st.expander("Why this plan?", expanded=True):
         st.text(scheduler.explain())
